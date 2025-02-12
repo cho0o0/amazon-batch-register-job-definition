@@ -7,6 +7,10 @@ inputs:
   job-definition:
     description: "The path to the Batch job definition JSON file"
     required: true
+  deregister-old-definition:
+    description: "If true, the old definition will be deregistered"
+    required: false
+    default: "false"
 outputs:
   job-definition-name:
     description: "The name of the job definition"
@@ -15,5 +19,5 @@ outputs:
   revision:
     description: "The revision number of the job definition"
 runs:
-  using: "node16"
+  using: "node20"
   main: "dist/index.js"

@@ -11,6 +11,7 @@ async function run() {
 
         // Get inputs
         const jobDefinitionFile = core.getInput('job-definition', { required: true });
+        const deregisterOldDefinition = core.getBooleanInput('deregister-old-definition', { required: false });
 
         // Register the job definition
         core.debug('Registering job definition');
@@ -39,6 +40,18 @@ async function run() {
         core.setOutput('revision', revision);
 
         core.info(`Registered job definition ${jobDefName}:${revision}`);
+
+        if (deregisterOldDefinition) {
+            const oldRevision = parseInt(revision) - 1;
+            if (oldRevision > 0) {
+                core.info(`Deregistering old definition ${jobDefName}:${oldRevision}`);
+                await batch.deregisterJobDefinition({
+                    jobDefinition: `${jobDefName}:${oldRevision}`
+                }).promise();
+            } else {
+                core.info(`No old definition to deregister for ${jobDefName}:${revision}`);
+            }
+        }
 
 
     }
