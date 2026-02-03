@@ -8,9 +8,13 @@ inputs:
     description: "The path to the Batch job definition JSON file"
     required: true
   deregister-old-definition:
-    description: "If true, the old definition will be deregistered"
+    description: "If true, all old job definition revisions will be deregistered (except the latest and those with excluded tags)"
     required: false
     default: "false"
+  deregister-old-definition-exclude-tags:
+    description: "Comma-separated list of tag key:value pairs (e.g., 'env:prod, keep:true'). Job definitions with any matching tag will NOT be deregistered"
+    required: false
+    default: ""
 outputs:
   job-definition-name:
     description: "The name of the job definition"
@@ -19,5 +23,5 @@ outputs:
   revision:
     description: "The revision number of the job definition"
 runs:
-  using: "node20"
+  using: "node24"
   main: "dist/index.js"

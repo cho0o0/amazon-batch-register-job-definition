@@ -1,27 +1,50 @@
-on:
-  push:
-    branches:
-      - main
-
 name: Package
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   check:
     name: Package distribution file
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        ref: main
-    - name: Package
-      run: |
-        npm ci
-        npm test
-        npm run package
-    - name: Commit
-      run: |
-        git config --global user.name "GitHub Actions"
-        git add dist/
-        git commit -m "chore: Update dist" || echo "No changes to commit"
-        git push origin HEAD:main
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout PR branch
+        run: gh pr checkout ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Package
+        run: npm run package
+
+      - name: Commit and push (dependabot only)
+        if: github.actor == 'dependabot[bot]'
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add dist/
+          git commit -m "chore: Update dist" || echo "No changes to commit"
+          git push
+
+      - name: Verify dist is up to date (non-dependabot)
+        if: github.actor != 'dependabot[bot]'
+        run: |
+          git diff --exit-code dist/index.js || (echo "Error: dist/index.js is out of date. Please run 'npm run package' and commit the changes." && exit 1)

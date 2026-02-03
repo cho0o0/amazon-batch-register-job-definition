@@ -1,6 +1,6 @@
 {
   "name": "amazon-batch-register-job-definition",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Github action to register a batch job definition",
   "main": "index.js",
   "scripts": {
@@ -18,12 +18,18 @@
   },
   "homepage": "https://github.com/cho0o0/amazon-batch-register-job-definition#readme",
   "dependencies": {
-    "@actions/core": "^1.11.1",
-    "@vercel/ncc": "^0.38.3",
-    "aws-sdk": "^2.1262.0"
+    "@actions/core": "^2.0.1",
+    "@aws-sdk/client-batch": "^3.723.0",
+    "@vercel/ncc": "^0.38.4"
   },
   "devDependencies": {
-    "eslint": "^9.20.1",
-    "jest": "^29.7.0"
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "globals": "^17.3.0",
+    "jest": "^30.2.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
