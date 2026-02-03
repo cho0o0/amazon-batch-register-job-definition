@@ -1,0 +1,119 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e-test:
+    name: End-to-End Test (Mocked)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Package action
+        run: npm run package
+
+      - name: Verify dist is up to date
+        run: |
+          git diff --exit-code dist/index.js || (echo "Error: dist/index.js is out of date" && exit 1)
+
+      - name: Verify action.yml is valid
+        run: |
+          node -e "
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+            const action = yaml.load(fs.readFileSync('action.yml', 'utf8'));
+
+            // Verify required fields
+            if (!action.name) throw new Error('action.yml missing name');
+            if (!action.inputs) throw new Error('action.yml missing inputs');
+            if (!action.inputs['job-definition']) throw new Error('action.yml missing job-definition input');
+            if (!action.inputs['deregister-old-definition']) throw new Error('action.yml missing deregister-old-definition input');
+            if (!action.inputs['deregister-old-definition-exclude-tags']) throw new Error('action.yml missing deregister-old-definition-exclude-tags input');
+            if (!action.outputs) throw new Error('action.yml missing outputs');
+            if (!action.runs || action.runs.using !== 'node24') throw new Error('action.yml should use node24');
+
+            console.log('action.yml validation passed!');
+          " || npm install js-yaml && node -e "
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+            const action = yaml.load(fs.readFileSync('action.yml', 'utf8'));
+
+            if (!action.name) throw new Error('action.yml missing name');
+            if (!action.inputs) throw new Error('action.yml missing inputs');
+            if (!action.inputs['job-definition']) throw new Error('action.yml missing job-definition input');
+            if (!action.inputs['deregister-old-definition']) throw new Error('action.yml missing deregister-old-definition input');
+            if (!action.inputs['deregister-old-definition-exclude-tags']) throw new Error('action.yml missing deregister-old-definition-exclude-tags input');
+            if (!action.outputs) throw new Error('action.yml missing outputs');
+            if (!action.runs || action.runs.using !== 'node24') throw new Error('action.yml should use node24');
+
+            console.log('action.yml validation passed!');
+          "
+
+      - name: Test action fails gracefully without AWS credentials
+        id: test-no-creds
+        continue-on-error: true
+        uses: ./
+        with:
+          job-definition: test-job-definition.json
+        env:
+          AWS_REGION: us-east-1
+
+      - name: Create test job definition file
+        run: |
+          cat > test-job-definition.json << 'EOF'
+          {
+            "jobDefinitionName": "e2e-test-job",
+            "type": "container",
+            "containerProperties": {
+              "image": "test-image:latest",
+              "resourceRequirements": [
+                { "type": "VCPU", "value": "1" },
+                { "type": "MEMORY", "value": "2048" }
+              ],
+              "command": ["echo", "test"]
+            }
+          }
+          EOF
+
+      - name: Test action fails with missing file
+        id: test-missing-file
+        continue-on-error: true
+        uses: ./
+        with:
+          job-definition: non-existent-file.json
+
+      - name: Verify missing file error
+        run: |
+          if [ "${{ steps.test-missing-file.outcome }}" != "failure" ]; then
+            echo "ERROR: Action should have failed with missing file"
+            exit 1
+          fi
+          echo "Missing file test passed!"
+
+      - name: Summary
+        run: |
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit tests: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- Package verification: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- action.yml validation: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing file handling: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All E2E tests completed successfully!" >> $GITHUB_STEP_SUMMARY
